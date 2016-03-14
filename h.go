@@ -82,6 +82,7 @@ type Application struct {
 	viewTemplates map[string]*template.Template //编译过的模板字典
 	conf          map[string]string             //配置内容项
 	controller    EcgoApper
+	mutex         bool
 }
 
 //请求会话对象，生命周期为一次请求，请求到达时创建

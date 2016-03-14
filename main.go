@@ -167,12 +167,17 @@ func (this *Request) finish() {
 			}
 			this.Log.Write(LL_ACCESS, strings.Join(logs, this.conf["log.access_log_sep"]))
 		}
-		this.reloadConf()           //如有需要，重载配置
-		err := this.buildTemplate() //如有需要，重编译模板
-		if err != nil {
-			eMsg := err.Error()
-			for _, str := range strings.Split(eMsg, "\n") {
-				this.Log.E(str)
+
+		if !this.mutex {
+			this.mutex = true
+			this.reloadConf()           //如有需要，重载配置
+			err := this.buildTemplate() //如有需要，重编译模板
+			this.mutex = false
+			if err != nil {
+				eMsg := err.Error()
+				for _, str := range strings.Split(eMsg, "\n") {
+					this.Log.E(str)
+				}
 			}
 		}
 		this.statsIncrease() //统计计数器增加
