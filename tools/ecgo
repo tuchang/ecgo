@@ -1,0 +1,98 @@
+#!/bin/bash
+#辅助脚本，用于创建应用以及编译安装
+#init app
+Init(){
+    if [ -z $GOPATH ];then
+        printf "[error] \$GOPATH is empty, You need to export it in your .bashrc\n"
+        exit 1
+    fi
+    echo " "
+    echo "Create $1 on $GOPATH/src now"
+    echo "---------------------------------"
+    DST=$GOPATH/src/$1
+    if [ -d "$DST" ] ; then
+        printf "[error] app_name %s exists\n" $1
+        exit 1
+    fi
+    echo "[create dirs]"
+    mkdir -v $DST $DST/controller $DST/service $DST/views $DST/logs $DST/public $DST/conf
+    echo "[create files]"
+    echo "create conf/conf.ini"
+    P=$(cd `dirname $0`; pwd)
+    cat $P/example/conf.ini > $DST/conf/conf.ini
+    echo "create $1.go"
+    cat $P/example/main.g|sed "s/{app_name}/$1/" > $DST/$1.go
+    echo "create controller/conftroller.go"
+    cat $P/example/controller.g > $DST/controller/controller.go
+    echo "create service/service.go"
+    cat $P/example/service.g > $DST/service/service.go
+    echo "---------------------------------"
+    echo "finish, good luck !!"
+    echo " "
+    exit 0
+}
+#build and install
+Install(){
+    trap 'kill -9 $BG_PID;echo;exit' 1 2 3 9 15
+    printf "install $1 to $2 \n--------------------------------\n"
+    if [ -d "$2" ];then
+        if [ "`ls -A $2`" != "" ];then
+            echo "[error] prefix $2 already exists and not empty"
+            exit 1
+        fi
+    fi
+    cd $GOPATH/src/$1
+    echo -n "build $1"
+    while [[ true ]]; do
+        echo -n "."
+        usleep 50000
+    done &
+    BG_PID=$!
+    go build $1
+    BUILD_OK=$?
+    kill $BG_PID
+
+    if [ $BUILD_OK -eq 0 ];then
+        echo "[ok]"
+        echo "[create dirs]"
+        mkdir -vp $2/logs
+        echo "[copy files]"
+        cp -rv conf $2/conf
+        cp -rv views $2/views
+        cp -rv public $2/public
+        cp -v $1 $2/
+    else
+        echo "[error]"
+        exit 1
+    fi
+    echo "---------------------------------"
+    echo "finish, You should add the path \"$2\" to the env PATH !!"
+    echo " "
+    exit 0
+}
+#使用说明
+Usage(){
+    printf "Usage:\n------------------\n"
+    printf "ecgo new app_name\n    -- create a app call app_name on $GOPATH/src\n"
+    printf "ecgo install app_name prefix\n    -- build the app, and install it to prefix\n"
+}
+
+case $1 in
+"new")
+    if [ $# != 2 ]; then
+        printf "Usage: ecgo new app_name\n"
+    else
+        Init $2
+    fi
+;;
+"install")
+    if [ $# != 3 ]; then
+        printf "Usage: ecgo install app_name prefix\n"
+    else
+        Install $2 $3
+    fi
+;;
+*)
+Usage
+;;
+esac
