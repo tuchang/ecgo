@@ -100,15 +100,10 @@ You may obtain a copy of the License at :  http://www.apache.org/licenses/LICENS
 package main
 import "github.com/tim1020/ecgo"
 type C struct {
-	*ecgo.ReqSess
+	*ecgo.Request
 }
 func main() {
-	ec := ecgo.New()
-	//ec.SetSessHandler(myHandler) 指定自定义sessionHandler
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		ec.Dispatch(w, r, &C{})
-	})
-	log.Fatal(http.ListenAndServe(ec.ListenAddr, nil))
+	log.Fatal(ecgo.Server(&C{},nil)) //第二参数可指定自定义sessionHandler
 }
 //controller
 func (this *C) Action() {
