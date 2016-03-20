@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/tim1020/ecgo/util"
+	"github.com/tim1020/godaemon"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -40,8 +41,10 @@ func Server(c EcgoApper, sess SessionHandler) (err error) {
 	app.newSession(sess)
 	app.newStats()
 	app.controller = c
-	http.HandleFunc("/", app.dispatch)
-	log.Fatal(http.ListenAndServe(app.Conf["listen"], nil))
+	//接入godaemon
+	mux1 := http.NewServeMux()
+	mux1.HandleFunc("/", app.dispatch)
+	log.Fatalln(godaemon.GracefulServe(app.Conf["listen"], mux1))
 	return
 }
 
