@@ -25,7 +25,7 @@ func (this *Request) SessionStart() {
 	if this.sessionOn { //已启动过，返回
 		return
 	}
-	sid, exists := this.Cookie[this.conf["session.sid"]]
+	sid, exists := this.Cookie[this.Conf["session.sid"]]
 	if !exists { //未存在，使用unixNano的md5值生成sid
 		sid = Md5(time.Now().UnixNano())
 	}
@@ -33,8 +33,8 @@ func (this *Request) SessionStart() {
 
 	this.sessHandler.Open(sid, this.Conf)
 	this.Session = this.sessHandler.Read()
-	cookie := &http.Cookie{Name: this.conf["session.sid"], Value: sid, HttpOnly: true}
-	ct, _ := strconv.Atoi(this.conf["session.cookie_lifetime"])
+	cookie := &http.Cookie{Name: this.Conf["session.sid"], Value: sid, HttpOnly: true}
+	ct, _ := strconv.Atoi(this.Conf["session.cookie_lifetime"])
 	if ct > 0 {
 		cookie.Expires = time.Now().Add(time.Second * time.Duration(ct))
 	}
@@ -42,10 +42,10 @@ func (this *Request) SessionStart() {
 	this.sessionOn = true
 	//gc
 	go func() {
-		gd, _ := strconv.Atoi(this.conf["session.gc_divisor"])
+		gd, _ := strconv.Atoi(this.Conf["session.gc_divisor"])
 		if gd > 1 && rand.Intn(gd) == 0 {
 			this.Log.Write(LL_SYS, "[%s]gc call", this.appId)
-			gt, _ := strconv.ParseInt(this.conf["session.gc_lifetime"], 10, 64)
+			gt, _ := strconv.ParseInt(this.Conf["session.gc_lifetime"], 10, 64)
 			this.sessHandler.Gc(gt)
 			return
 		}
@@ -103,8 +103,8 @@ type fileSession struct {
 	data   map[string]interface{}
 }
 
-func (this *fileSession) Open(sessId string, config *Conf) {
-	this.path, _ = config.Get("session.path", os.TempDir()+"/sess")
+func (this *fileSession) Open(sessId string, conf map[string]string) {
+	this.path, _ = conf["session.path"]
 	this.file = fmt.Sprintf("%s/%s/%s/%s", this.path, sessId[:2], sessId[2:4], sessId[4:]) //hash两层路径
 }
 func (this *fileSession) Set(key string, val interface{}) {
@@ -160,9 +160,9 @@ type mcSession struct {
 	data   map[string]interface{}
 }
 
-func (this *mcSession) Open(sessId string, config *Conf) {
+func (this *mcSession) Open(sessId string, conf map[string]string) {
 	this.key = "sess_" + sessId
-	mcServer, _ := config.Get("session.mc_server")
+	mcServer, _ := conf["session.mc_server"]
 	this.mc = NewMc(mcServer)
 }
 func (this *mcSession) Set(key string, val interface{}) {

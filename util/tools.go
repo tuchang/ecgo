@@ -1,5 +1,8 @@
 //提供常用的工具函数
 
+// 常用工具包
+//
+// 提供 benchmark,log处理，ini配置文件处理,数据校验validator，Md5等方法
 package util
 
 import (
@@ -34,15 +37,3 @@ func Md5(in interface{}, length ...int) string {
 	}
 	return str[0:l]
 }
-
-// func Md5(bytes []byte, length ...int) string {
-// 	l := 32
-// 	if len(length) == 1 {
-// 		l = length[0]
-// 	}
-// 	str := fmt.Sprintf("%x", md5.Sum(bytes))
-// 	if l > len(str) {
-// 		l = len(str)
-// 	}
-// 	return str[0:l]
-// }

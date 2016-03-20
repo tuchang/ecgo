@@ -1,8 +1,5 @@
 //定时器
 
-//timer
-//
-// util.timer(func,5)
 package util
 
 // import (

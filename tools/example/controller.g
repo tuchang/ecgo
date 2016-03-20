@@ -5,7 +5,7 @@ import (
 )
 
 type Controller struct {
-	*ecgo.ReqSess
+	*ecgo.Request
 }
 
 func (this *Controller) PreControl() {

@@ -46,11 +46,11 @@ func (this *Request) parseReq() {
 	this.Get = getGet(this.Req)
 	this.Post = getPost(this.Req, m)
 	if m {
-		this.UpFile = getFile(this.Req, this.conf)
+		this.UpFile = getFile(this.Req, this.Conf)
 	}
 	this.Method = this.Req.Method
 	RESTful := false
-	if this.conf["RESTful"] == "on" {
+	if this.Conf["RESTful"] == "on" {
 		RESTful = true
 	}
 	this.ActionName, this.ActionParams = parsePath(RESTful, this.Req)

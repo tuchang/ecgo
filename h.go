@@ -65,29 +65,28 @@ type EcgoApper interface {
 
 //Session处理接口
 type SessionHandler interface {
-	Open(sessId string, config *Conf) //开启session时调用
-	Set(key string, val interface{})  //写入session，给Session赋值时调用,val设为nil时，表示删除
-	Read() map[string]interface{}     //读取session，返回反序列后的格式数据，用来设置到Session的map
-	Destroy()                         //销毁一个session（SessionDestory时调用）
-	Save()                            //将session的值序列化后持久化保存(请求完成时或SessionWrite时)
-	Gc(maxLife int64)                 //过期数据清理,系统按特定机率触发
+	Open(sessId string, conf map[string]string) //开启session时调用
+	Set(key string, val interface{})            //写入session，给Session赋值时调用,val设为nil时，表示删除
+	Read() map[string]interface{}               //读取session，返回反序列后的格式数据，用来设置到Session的map
+	Destroy()                                   //销毁一个session（SessionDestory时调用）
+	Save()                                      //将session的值序列化后持久化保存(请求完成时或SessionWrite时)
+	Gc(maxLife int64)                           //过期数据清理,系统按特定机率触发
 }
 
 //服务对象，生命周期为整个程序运行时,服务启动时创建
 type Application struct {
-	Conf          *Conf                         //配置文件操作对象
 	Log           *Log                          //日志操作对象
+	Conf          map[string]string             //配置内容项
 	stats         *stats                        //统计器对象
 	sessHandler   SessionHandler                //session处理器
 	viewTemplates map[string]*template.Template //编译过的模板字典
-	conf          map[string]string             //配置内容项
 	controller    EcgoApper
 	mutex         bool
 }
 
 //请求会话对象，生命周期为一次请求，请求到达时创建
 type Request struct {
-	*Application     //继承Conf,Bm,Log和SessHandler
+	*Application     //组合Bm,Log和sessHandler
 	Bm           *Bm //benchMark操作
 	appId        string
 	sessionOn    bool

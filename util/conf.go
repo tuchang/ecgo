@@ -1,6 +1,5 @@
 //ini格式配置文件的读取处理
 
-//辅助工具包，提共可独立使用的各种常用工具，包括配置读取，日志，定时器，工作池等
 package util
 
 import (
@@ -11,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -18,30 +18,28 @@ var (
 	bSectionStart = []byte{'['}
 	bSectionEnd   = []byte{']'}
 	bEqual        = []byte{'='}
+	confData      = make(map[string]map[string]string) //配置数据
+	cMtime        int64                                //配置的最后修改时间
 )
 
-type Conf struct {
-	Mtime int64 //配置文件的更新时间
-	data  map[string]map[string]string
-}
-
-//加载ini格式配置文件,可多个,多个文件之间有相同的key会覆盖，不属于任何section的默认为default
-func LoadConf(files ...string) (*Conf, error) {
-	var data = make(map[string]map[string]string)
-	var mtime int64
-	for _, file := range files {
+//加载ini格式配置文件,可多个,多个文件之间有相同的key会覆盖
+//只读取一次文件，除非文件发生改变
+func LoadConf(files ...string) (map[string]string, error) {
+	for _, file := range files { //遍历要读取的配置文件
 		f, err := os.Open(file)
 		if err != nil {
 			return nil, err
 		}
 		defer f.Close()
 		stat, _ := f.Stat()
-		t1 := stat.ModTime().Unix()
-		if t1 > mtime {
-			mtime = t1
+		if stat.ModTime().Unix() <= cMtime { //未修改过的，不需要读
+			continue
 		}
+		//读取文件
+		confData[f.Name()] = make(map[string]string)
+
 		buf := bufio.NewReader(f)
-		section := "default"
+		section := ""
 		for ln := 1; ; ln++ {
 			line, err := buf.ReadBytes('\n')
 			if err != nil {
@@ -59,56 +57,27 @@ func LoadConf(files ...string) (*Conf, error) {
 				section = strings.ToLower(string(line[1 : len(line)-1]))
 				continue
 			}
-			if _, ok := data[section]; !ok { //section未初始化，先分配内存
-				data[section] = make(map[string]string)
-			}
+
 			keyValue := bytes.SplitN(line, bEqual, 2)
 			if len(keyValue) != 2 {
 				return nil, errors.New(fmt.Sprintf("Load conf file error: file=%s,line=%d", file, ln))
 			}
 			key := string(bytes.TrimSpace(keyValue[0]))
+			if section != "" {
+				key = section + "." + key
+			}
 			val := bytes.TrimSpace(keyValue[1])
 			val = bytes.Trim(val, `"'`) //如果有，去掉引号
-			data[section][key] = string(val)
+			confData[f.Name()][key] = string(val)
 		}
 	}
-	return &Conf{mtime, data}, nil
-}
-
-//获取指定的配置项的值
-//
-//第一参数key= “section,key”,缺少section时可只传"key",默认读取section=default
-//
-//第二参数为没有设置时的缺省值
-//
-//统一以字符串方式返回，未设置时使用指定的缺省值，如未指定缺省值，第二返回值为false
-func (this *Conf) Get(str ...string) (string, bool) {
-	defaultSet := false
-	var key, defaultVal string
-	switch len(str) {
-	case 2:
-		defaultSet = true
-		defaultVal = str[1]
-		fallthrough
-	case 1:
-		key = str[0]
-	default:
-		//TODO:panic conf.Get调用错误?
-		return "", false
+	cMtime = time.Now().Unix()
+	//获取confData的copy，因为调用者有可能会修改
+	data := make(map[string]string)
+	for _, d := range confData {
+		for k, v := range d {
+			data[k] = v
+		}
 	}
-
-	keys := strings.SplitN(key, ".", 2)
-	section := "default"
-	if len(keys) == 1 {
-		key = keys[0]
-	} else {
-		section = keys[0]
-		key = keys[1]
-	}
-	val, exists := this.data[section][key]
-	if !exists && defaultSet {
-		val = defaultVal
-		exists = true
-	}
-	return val, exists
+	return data, nil
 }

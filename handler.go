@@ -24,9 +24,9 @@ func (this *Request) defaultHandler(c EcgoApper) {
 		return
 	}
 	args := []reflect.Value{rValue}
-	onBefore, exist := rType.MethodByName(this.conf["prefix_control"])
+	onBefore, exist := rType.MethodByName(this.Conf["prefix_control"])
 	if exist {
-		this.Log.Write(LL_SYS, "[%s]prefix_control start: %s", this.appId, this.conf["prefix_control"])
+		this.Log.Write(LL_SYS, "[%s]prefix_control start: %s", this.appId, this.Conf["prefix_control"])
 		this.Bm.Set("pre_control_start")
 		onBefore.Func.Call(args)
 		this.Bm.Set("pre_control_end")
@@ -43,7 +43,7 @@ func (this *Request) defaultHandler(c EcgoApper) {
 func (this *Request) staticHandler() {
 	path := this.Req.URL.Path
 	this.Log.Write(LL_SYS, "[%s]match static , path=%s", this.appId, path)
-	file := this.conf["static_path"] + path
+	file := this.Conf["static_path"] + path
 	//todo: 缓存，content-type白名单
 	f, err := os.Open(file)
 	if err != nil && os.IsNotExist(err) { //自定义404
@@ -51,7 +51,7 @@ func (this *Request) staticHandler() {
 		return
 	}
 	defer f.Close()
-	staticHandler := http.FileServer(http.Dir(this.conf["static_path"]))
+	staticHandler := http.FileServer(http.Dir(this.Conf["static_path"]))
 	staticHandler.ServeHTTP(this.ResWriter, this.Req)
 }
 

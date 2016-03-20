@@ -4,7 +4,6 @@ import (
 	"{app_name}/controller"
 	"github.com/tim1020/ecgo"
 	"log"
-	"net/http"
 )
 
 func main() {
