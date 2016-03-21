@@ -5,6 +5,7 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -56,7 +57,7 @@ func (this *Log) Write(lType string, format string, vals ...interface{}) {
 	}
 	t := time.Now()
 	filepath := fmt.Sprintf("%s/%s_%s.log", this.path, lType, string(t.Format("20060102")))
-	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_APPEND, os.ModePerm)
+	file, err := os.OpenFile(filepath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		return
 	}
@@ -65,7 +66,10 @@ func (this *Log) Write(lType string, format string, vals ...interface{}) {
 	wFile.WriteString(string(t.Format("2006/01/02 15:04:05 ")))
 	wFile.WriteString(fmt.Sprintf(format, vals...))
 	wFile.WriteString("\n")
-	wFile.Flush()
+	err = wFile.Flush()
+	if err != nil {
+		log.Fatalln("[err]:", err)
+	}
 }
 
 //判断是否需要记录指定级别日志
