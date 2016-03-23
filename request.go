@@ -49,11 +49,7 @@ func (this *Request) parseReq() {
 		this.UpFile = getFile(this.Req, this.Conf)
 	}
 	this.Method = this.Req.Method
-	RESTful := false
-	if this.Conf["RESTful"] == "on" {
-		RESTful = true
-	}
-	this.ActionName, this.ActionParams = parsePath(RESTful, this.Req)
+	this.ActionName, this.ActionParams = parsePath(this.Req, this.Conf)
 
 	this.Log.Write(LL_SYS, "[%s]method=%s, actionName=%s,actionParams=%s", this.appId, this.Method, this.ActionName, this.ActionParams)
 	this.Log.Write(LL_SYS, "[%s]get =>%v", this.appId, this.Get)
@@ -63,11 +59,19 @@ func (this *Request) parseReq() {
 }
 
 //处理path
-func parsePath(RESTfulOn bool, req *http.Request) (actName string, actParams []string) {
+func parsePath(req *http.Request, conf map[string]string) (actName string, actParams []string) {
+	if req.URL.Path == "/" {
+		actName = conf["default_controll"]
+		return
+	}
+	RESTful := false
+	if conf["RESTful"] == "on" {
+		RESTful = true
+	}
 	path := strings.Split(req.URL.Path, "/")
 	l := len(path)
 	if path[1] != "" {
-		if RESTfulOn {
+		if RESTful {
 			var action string
 			for i := 1; i < l; i++ {
 				if i%2 != 0 {

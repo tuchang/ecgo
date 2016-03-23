@@ -59,10 +59,11 @@ func checkConf(conf map[string]string) (err error) {
 	setConfDefault(conf, "listen", ":8080")
 	setConfDefault(conf, "prefix_control", "PreControl")
 	setConfDefault(conf, "request_sep", "&")
-	setConfDefault(conf, "static_path", RootPath+"/public/")
+	setConfDefault(conf, "static_path", RootPath)
 	setConfDefault(conf, "static_prefix", "/public/")
 	setConfDefault(conf, "stats_page", "off")
 	setConfDefault(conf, "RESTful", "off")
+	setConfDefault(conf, "default_controll", "Index")
 	setConfDefault(conf, "stats_interval", "30")
 	if _, err := strconv.Atoi(conf["stats_interval"]); err != nil {
 		errs = append(errs, fmt.Sprintf("stats_interval: %s not a number", conf["stats_interval"]))
