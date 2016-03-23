@@ -3,13 +3,28 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const (
+	ERR_OK       = iota
+	ERR_MISS     //缺少必填字段
+	ERR_UNEXCEPT //非期望值
+	ERR_BADRULE  //规则错误
+)
+
+type ValidErr struct {
+	Code int
+	Msg  string
+}
+
+func (ve *ValidErr) Error() string {
+	return fmt.Sprintf("[%d]%s", ve.Code, ve.Msg)
+}
 
 type Validator struct {
 	data map[string]string //要校验的数据字典
@@ -22,7 +37,7 @@ type vRule struct {
 
 //校验规则接口
 type ValidateRuler interface {
-	Check(data string) error
+	Check(data string) *ValidErr
 }
 
 //创建校验器对象
@@ -50,13 +65,13 @@ func (this *Validator) AddExtRule(key string, rule ValidateRuler, required ...bo
 }
 
 //执行检查
-func (this *Validator) Check() (errs map[string]error) {
-	errs = make(map[string]error)
+func (this *Validator) Check() (errs map[string]*ValidErr) {
+	errs = make(map[string]*ValidErr)
 	for k, v := range this.rule {
 		data, exists := this.data[k]
 		if !exists { //无值
 			if v.required { //如果必填，报错
-				errs[k] = errors.New("data error: required field miss")
+				errs[k] = &ValidErr{ERR_MISS, "required field miss"}
 			}
 		} else { //有值判断规则
 			if err := v.vr.Check(data); err != nil {
@@ -75,9 +90,9 @@ type normalRule struct {
 }
 
 //内置规则的检查实现
-func (this *normalRule) Check(data string) (Err error) {
+func (this *normalRule) Check(data string) (vErr *ValidErr) {
 	if this.params == "" {
-		Err = errors.New("rule error: params wrong of rule")
+		vErr = &ValidErr{ERR_BADRULE, "rule params misss"}
 		return
 	}
 	p := strings.Split(this.params, ",")
@@ -85,23 +100,23 @@ func (this *normalRule) Check(data string) (Err error) {
 	case "string":
 		min, max, err := this.parseParams4Size(p)
 		if err != nil {
-			Err = err
+			vErr = err
 		} else {
 			if l := len(data); l < min || l > max {
-				Err = errors.New(fmt.Sprintf("data error: except length in range(%d,%d)", min, max))
+				vErr = &ValidErr{ERR_UNEXCEPT, "length range out of except"}
 			}
 		}
 	case "number":
 		num, err := strconv.Atoi(data)
 		if err != nil {
-			Err = errors.New("data error: except a number")
+			vErr = &ValidErr{ERR_UNEXCEPT, "number except"}
 		} else {
 			min, max, err := this.parseParams4Size(p)
 			if err != nil {
-				Err = err
+				vErr = err
 			} else {
 				if num < min || num > max {
-					Err = errors.New(fmt.Sprintf("data error: except in range(%d,%d)", min, max))
+					vErr = &ValidErr{ERR_UNEXCEPT, "value range out of except"}
 				}
 			}
 		}
@@ -113,34 +128,35 @@ func (this *normalRule) Check(data string) (Err error) {
 			}
 		}
 		if !match {
-			Err = errors.New(fmt.Sprintf("data error: except value in list %s", p))
+			vErr = &ValidErr{ERR_UNEXCEPT, "value not in except list"}
 		}
 	case "regular":
 		reg := regexp.MustCompile(this.params)
 		if !reg.Match([]byte(data)) {
-			Err = errors.New("data error: not match regexp")
+			vErr = &ValidErr{ERR_UNEXCEPT, "regexp not match"}
 		}
 	case "datetime":
 		if _, err := time.Parse(this.params, data); err != nil {
-			Err = errors.New("data error: not match datetime -" + err.Error())
+			vErr = &ValidErr{ERR_UNEXCEPT, "wrong daatime format"}
 		}
 	default:
-		Err = errors.New(fmt.Sprintf("rule error: not support of rule=%s", this.rule))
+		vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("rule %s unsupport", this.rule)}
 	}
 	return
 }
 
-func (this *normalRule) parseParams4Size(p []string) (min int, max int, err error) {
+func (this *normalRule) parseParams4Size(p []string) (min int, max int, vErr *ValidErr) {
+	var err error
 	if len(p) == 2 { //格式[min,max]  包括边界
 		if min, err = strconv.Atoi(p[0]); err != nil {
-			err = errors.New(fmt.Sprintf("rule error: params wrong of rule %s, min not a number", this.rule))
+			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong:  min not a number", this.rule)}
 		} else if max, err = strconv.Atoi(p[1]); err != nil {
-			err = errors.New(fmt.Sprintf("rule error: params wrong of rule %s, max not a number", this.rule))
+			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong : max not a number", this.rule)}
 		} else if min > max {
-			err = errors.New(fmt.Sprintf("rule error: params wrong of rule %s, min > max", this.rule))
+			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("% sparams wrong: min > max", this.rule)}
 		}
 	} else {
-		err = errors.New(fmt.Sprintf("rule error: params wrong of rule %s,except \"min,max\"", this.rule))
+		vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong : except \"min,max\"", this.rule)}
 	}
 	return
 }
