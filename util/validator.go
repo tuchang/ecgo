@@ -79,7 +79,11 @@ func (this *Validator) Check() (errs map[string]*ValidErr) {
 			}
 		}
 	}
-	return errs
+	if len(errs) > 0 {
+		return errs
+	} else {
+		return nil
+	}
 }
 
 //内置规则
