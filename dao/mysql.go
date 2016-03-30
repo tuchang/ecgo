@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+const (
+	NULL_VAL = "\\N"
+)
+
 //mysql操作对象
 type MySQL struct {
 	DB           *sql.DB
@@ -62,7 +66,7 @@ func (this *MySQL) SetLimit(limit string) *MySQL {
 }
 
 //查询单条结果集
-func (this *MySQL) GetRow(wh ...map[string]interface{}) (map[string]interface{}, error) {
+func (this *MySQL) GetRow(wh ...map[string]interface{}) (map[string]string, error) {
 	sqlStr, vals := this._buildSelect(true, wh...)
 	result, err := this.Query(sqlStr, vals...)
 	if err == nil && len(result) > 0 {
@@ -73,7 +77,7 @@ func (this *MySQL) GetRow(wh ...map[string]interface{}) (map[string]interface{},
 }
 
 //查询记录集(多条)
-func (this *MySQL) Get(wh ...map[string]interface{}) ([]map[string]interface{}, error) {
+func (this *MySQL) Get(wh ...map[string]interface{}) ([]map[string]string, error) {
 	sqlStr, vals := this._buildSelect(false, wh...)
 	return this.Query(sqlStr, vals...)
 }
@@ -128,16 +132,17 @@ func (this *MySQL) Exec(sqlStr string, vals ...interface{}) (id int64, err error
 	} else {
 		stmt, err = this.DB.Prepare(sqlStr)
 	}
-
 	if err == nil {
 		defer stmt.Close()
-		res, err := stmt.Exec(vals...)
-		if err == nil {
+		res, err1 := stmt.Exec(vals...)
+		if err1 == nil {
 			if strings.HasPrefix(strings.ToLower(sqlStr), "insert") {
 				id, err = res.LastInsertId() //根椐前缀
 			} else {
 				id, err = res.RowsAffected()
 			}
+		} else {
+			err = err1
 		}
 	}
 	this.err = err
@@ -145,31 +150,38 @@ func (this *MySQL) Exec(sqlStr string, vals ...interface{}) (id int64, err error
 }
 
 //执行查询语句select,返回结果集
-func (this *MySQL) Query(sqlStr string, vals ...interface{}) (result []map[string]interface{}, err error) {
+func (this *MySQL) Query(sqlStr string, vals ...interface{}) (result []map[string]string, err error) {
 	var rows *sql.Rows
 	if this.tx != nil {
 		rows, err = this.tx.Query(sqlStr, vals...)
 	} else {
 		rows, err = this.DB.Query(sqlStr, vals...)
 	}
+
 	if err == nil { //处理结果
 		defer rows.Close()
-		columns, _ := rows.Columns()
-		len := len(columns)
-		for rows.Next() {
-			values := make([]sql.RawBytes, len)
-			scanArgs := make([]interface{}, len)
-			for i := range values {
-				scanArgs[i] = &values[i]
-			}
-			rows.Scan(scanArgs...)
-			r := make(map[string]interface{})
-			for i, c := range values {
-				r[columns[i]] = c
-			}
-			result = append(result, r)
+		cols, _ := rows.Columns()
+		l := len(cols)
+		rawResult := make([][]byte, l)
+		rowResult := make(map[string]string)
+		dest := make([]interface{}, l) // A temporary interface{} slice
+		for i, _ := range rawResult {
+			dest[i] = &rawResult[i] // Put pointers to each string in the interface slice
 		}
-		err = rows.Err()
+		for rows.Next() {
+			err = rows.Scan(dest...)
+			if err == nil {
+				for i, raw := range rawResult {
+					key := cols[i]
+					if raw == nil {
+						rowResult[key] = NULL_VAL
+					} else {
+						rowResult[key] = string(raw)
+					}
+				}
+				result = append(result, rowResult)
+			}
+		}
 	}
 	this.err = err
 	return
