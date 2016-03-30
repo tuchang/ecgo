@@ -97,6 +97,7 @@ func (this *Request) sessionSave() {
 
 //内置handler,不导出
 type fileSession struct {
+	log    *Log
 	file   string
 	path   string
 	change bool
@@ -106,6 +107,7 @@ type fileSession struct {
 func (this *fileSession) Open(sessId string, conf map[string]string) {
 	this.path, _ = conf["session.path"]
 	this.file = fmt.Sprintf("%s/%s/%s/%s", this.path, sessId[:2], sessId[2:4], sessId[4:]) //hash两层路径
+	this.log.D("session open,file=%s", this.file)
 }
 func (this *fileSession) Set(key string, val interface{}) {
 	this.change = true
@@ -120,13 +122,22 @@ func (this *fileSession) Read() map[string]interface{} {
 	_, err := os.Stat(this.file)
 	if err == nil { //存在，读取
 		os.Chtimes(this.file, time.Now(), time.Now()) //设置一下最后更新时间
-		fi, _ := os.Open(this.file)
-		defer fi.Close()
-		content, _ := ioutil.ReadAll(fi)
-		if err := json.Unmarshal(content, &this.data); err != nil {
-			//处理文件错误
+		fi, err := os.Open(this.file)
+		if err != nil {
+			this.log.E("[filesession err]: open file fail,file=%s", this.file)
 		}
+		defer fi.Close()
+		content, err := ioutil.ReadAll(fi)
+		if err != nil {
+			this.log.E("[filesession err]: file read fail,file=%s", this.file)
+		}
+		if err := json.Unmarshal(content, &this.data); err != nil {
+			this.log.E("[filesession err]: jsondecode fail,file=%s,err=%v", this.file, err)
+		}
+	} else {
+		this.log.E("[filesession err]: file stat fail,file=%s,err=%v", this.file, err)
 	}
+	this.log.D("session read,data=%v", this.data)
 	return this.data
 }
 func (this *fileSession) Destroy() {
@@ -137,14 +148,22 @@ func (this *fileSession) Destroy() {
 }
 func (this *fileSession) Save() {
 	if this.change {
-		data, _ := json.Marshal(this.data)
+		data, err := json.Marshal(this.data)
+		if err != nil {
+			this.log.E("[filesession err]: json encode error while save,data=%#v,err=%#v", this.data, err)
+			return
+		}
 		path := filepath.Dir(this.file)
-		_, err := os.Stat(path)
-		if err != nil && os.IsNotExist(err) {
+		if _, err1 := os.Stat(path); err1 != nil && os.IsNotExist(err1) { //目录不存在，先创建
 			os.MkdirAll(path, os.ModePerm)
 		}
-		fd, _ := os.OpenFile(this.file, os.O_TRUNC|os.O_CREATE, os.ModePerm)
-		fd.Write(data)
+		fd, err2 := os.OpenFile(this.file, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, os.ModePerm)
+		if err2 == nil {
+			_, err2 = fd.Write(data)
+		}
+		if err2 != nil {
+			this.log.E("[filesession err]: write file error,err=%#v", err2)
+		}
 	}
 }
 func (this *fileSession) Gc(maxLife int64) {
@@ -154,6 +173,7 @@ func (this *fileSession) Gc(maxLife int64) {
 
 //内置handler,不导出
 type mcSession struct {
+	log    *Log
 	mc     *Mc
 	key    string
 	change bool
@@ -177,10 +197,12 @@ func (this *mcSession) Read() map[string]interface{} {
 	this.data = make(map[string]interface{})
 	content, err := this.mc.Get(this.key)
 	if err == nil {
-		if err := json.Unmarshal(content, &this.data); err != nil {
-			//
-		}
+		err = json.Unmarshal(content, &this.data)
 	}
+	if err != nil {
+		this.log.E("[mcsession err]: mc get or jsondecode error,err=%v", err)
+	}
+	this.log.D("session read,data=%v", this.data)
 	return this.data
 }
 func (this *mcSession) Destroy() {

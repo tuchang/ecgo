@@ -178,9 +178,9 @@ func (this *Application) newSession(s SessionHandler) {
 	} else {
 		switch this.Conf["session.handler"] {
 		case "file":
-			this.sessHandler = &fileSession{}
+			this.sessHandler = &fileSession{log: this.Log}
 		case "memcache":
-			this.sessHandler = &mcSession{}
+			this.sessHandler = &mcSession{log: this.Log}
 		}
 	}
 }
