@@ -163,12 +163,13 @@ func (this *MySQL) Query(sqlStr string, vals ...interface{}) (result []map[strin
 		cols, _ := rows.Columns()
 		l := len(cols)
 		rawResult := make([][]byte, l)
-		rowResult := make(map[string]string)
+
 		dest := make([]interface{}, l) // A temporary interface{} slice
 		for i, _ := range rawResult {
 			dest[i] = &rawResult[i] // Put pointers to each string in the interface slice
 		}
 		for rows.Next() {
+			rowResult := make(map[string]string)
 			err = rows.Scan(dest...)
 			if err == nil {
 				for i, raw := range rawResult {
