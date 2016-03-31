@@ -102,26 +102,18 @@ func (this *normalRule) Check(data string) (vErr *ValidErr) {
 	p := strings.Split(this.params, ",")
 	switch this.rule {
 	case "string":
-		min, max, err := this.parseParams4Size(p)
+		err := this.parseParams4Size(p, len(data))
 		if err != nil {
 			vErr = err
-		} else {
-			if l := len(data); l < min || l > max {
-				vErr = &ValidErr{ERR_UNEXCEPT, "length range out of except"}
-			}
 		}
 	case "number":
 		num, err := strconv.Atoi(data)
 		if err != nil {
 			vErr = &ValidErr{ERR_UNEXCEPT, "number except"}
 		} else {
-			min, max, err := this.parseParams4Size(p)
+			err := this.parseParams4Size(p, num)
 			if err != nil {
 				vErr = err
-			} else {
-				if num < min || num > max {
-					vErr = &ValidErr{ERR_UNEXCEPT, "value range out of except"}
-				}
 			}
 		}
 	case "list":
@@ -149,15 +141,32 @@ func (this *normalRule) Check(data string) (vErr *ValidErr) {
 	return
 }
 
-func (this *normalRule) parseParams4Size(p []string) (min int, max int, vErr *ValidErr) {
+func (this *normalRule) parseParams4Size(p []string, data int) (vErr *ValidErr) {
 	var err error
+	var min, max int
 	if len(p) == 2 { //格式[min,max]  包括边界
-		if min, err = strconv.Atoi(p[0]); err != nil {
-			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong:  min not a number", this.rule)}
-		} else if max, err = strconv.Atoi(p[1]); err != nil {
-			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong : max not a number", this.rule)}
-		} else if min > max {
-			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("% sparams wrong: min > max", this.rule)}
+		s := strings.TrimSpace(p[0])
+		e := strings.TrimSpace(p[1])
+		if s != "" { //为空时没有最小值
+			if min, err = strconv.Atoi(s); err != nil {
+				vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong:  min not a number", this.rule)}
+			} else {
+				if data < min {
+					vErr = &ValidErr{ERR_UNEXCEPT, "less than except"}
+				}
+			}
+		}
+		if e != "" {
+			if max, err = strconv.Atoi(e); err != nil {
+				vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong:  max not a number", this.rule)}
+			} else {
+				if data > max {
+					vErr = &ValidErr{ERR_UNEXCEPT, "more than except"}
+				}
+			}
+		}
+		if min != 0 && max != 0 && min > max {
+			vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong: min > max", this.rule)}
 		}
 	} else {
 		vErr = &ValidErr{ERR_BADRULE, fmt.Sprintf("%s params wrong : except \"min,max\"", this.rule)}
