@@ -82,6 +82,18 @@ func (this *MySQL) Get(wh ...map[string]interface{}) ([]map[string]string, error
 	return this.Query(sqlStr, vals...)
 }
 
+//统计指定条件的记录数
+func (this *MySQL) GetCount(wh ...map[string]interface{}) (nums int) {
+	sqlStr := fmt.Sprintf("select count(*) nums from `%s`", this.Table)
+	where, vals := this._parseWhere(wh...)
+	if where != "" {
+		sqlStr = sqlStr + " where " + where
+	}
+	rows := this.DB.QueryRow(sqlStr, vals...)
+	rows.Scan(&nums)
+	return
+}
+
 //插入一条数据,成功时返回自增ID(若无自增字段返回0),todo:支持批量
 func (this *MySQL) Insert(data map[string]interface{}) (int64, error) {
 	var fields []string
