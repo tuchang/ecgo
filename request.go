@@ -38,7 +38,7 @@ func (this *Request) parseReq() {
 	if strings.HasPrefix(ct, "multipart/form-data") {
 		m = true
 		this.Req.ParseMultipartForm(10 << 20)
-	} else if ct == "application/x-www-form-urlencoded" {
+	} else if strings.HasPrefix(ct, "application/x-www-form-urlencoded") {
 		this.Req.ParseForm()
 	}
 	this.Header = getHeader(this.Req)
