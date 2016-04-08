@@ -31,9 +31,7 @@ ecgo 是一个**易学、易用、易扩展**的web开发框架。核心功能�
 ## 版权说明
 
 Copyright 2016 ecgo Author. All Rights Reserved.
-Licensed under the Apache License, Version 2.0 (the "License");
-You may not use this file except in compliance with the License.
-You may obtain a copy of the License at :  http://www.apache.org/licenses/LICENSE-2.0
+Licensed under LGPL ,see http://www.gnu.org/licenses/lgpl.html
 
 如有任何疑问，请联系本人： tim8670@gmail.com 
 
