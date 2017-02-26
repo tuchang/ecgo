@@ -29,7 +29,7 @@ type MySQL struct {
 }
 
 //生成mysql操作对象
-func NewMySQL(dsn string, table string, openConn int, idleConn int) (mysql *MySQL, Err error) {
+func NewMySQL(dsn string, table string, openConn int, idleConn int) (mysql *MySQL, err error) {
 	db, err := sql.Open("mysql", dsn)
 	if err == nil {
 		db.Ping()

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/tim1020/ecgo/util"
-	"github.com/tim1020/godaemon"
+	//"github.com/tim1020/godaemon"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -44,7 +44,8 @@ func Server(c EcgoApper, sess SessionHandler) (err error) {
 	//接入godaemon
 	mux1 := http.NewServeMux()
 	mux1.HandleFunc("/", app.dispatch)
-	log.Fatalln(godaemon.GracefulServe(app.Conf["listen"], mux1))
+	log.Fatalln(http.ListenAndServe(app.Conf["listen"], mux1))
+	//log.Fatalln(godaemon.GracefulServe(app.Conf["listen"], mux1))
 	return
 }
 
@@ -75,7 +76,12 @@ func (this *Application) dispatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	//处理请求参数
-	req.parseReq()
+	err := req.parseReq()
+	if err != nil {
+		w.WriteHeader(400)
+		fmt.Fprintf(w, "<h1>400 bad request</h2> <li>%s</li> ", err.Error())
+		return
+	}
 	//开启session
 	if this.Conf["session.auto_start"] == "on" {
 		req.SessionStart()

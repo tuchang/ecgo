@@ -3,6 +3,7 @@
 package ecgo
 
 import (
+	"errors"
 	"fmt"
 	. "github.com/tim1020/ecgo/util"
 	"io"
@@ -26,7 +27,7 @@ const (
 /**
  * 对http请求进行格式化处理, 并将结果存入App的成员变量 Get/Post/Cookie/Header/UpFile
  */
-func (this *Request) parseReq() {
+func (this *Request) parseReq() (err error) {
 	this.Log.Write(LL_SYS, "[%s]parse request start", this.appId)
 	this.Bm.Set("parse_req_start")
 	defer func() {
@@ -49,44 +50,42 @@ func (this *Request) parseReq() {
 		this.UpFile = getFile(this.Req, this.Conf)
 	}
 	this.Method = this.Req.Method
-	this.ActionName, this.ActionParams = parsePath(this.Req, this.Conf)
+	this.Action, this.Resource, this.Pk, err = parsePath(this.Req, this.Conf)
 
-	this.Log.Write(LL_SYS, "[%s]method=%s, actionName=%s,actionParams=%s", this.appId, this.Method, this.ActionName, this.ActionParams)
+	this.Log.Write(LL_SYS, "[%s]method=%s, RESTFul=%s,Resource=%s,Id=%d", this.appId, this.Method, this.Conf["RESTful"], this.Resource, this.Pk)
 	this.Log.Write(LL_SYS, "[%s]get =>%v", this.appId, this.Get)
 	this.Log.Write(LL_SYS, "[%s]post =>%v", this.appId, this.Post)
 	this.Log.Write(LL_SYS, "[%s]cookie =>%v", this.appId, this.Cookie)
 	this.Log.Write(LL_SYS, "[%s]file =>%v", this.appId, this.UpFile)
+	return
 }
 
 //处理path
-func parsePath(req *http.Request, conf map[string]string) (actName string, actParams []string) {
+func parsePath(req *http.Request, conf map[string]string) (action string, resource string, id int64, err error) {
 	if req.URL.Path == "/" {
-		actName = conf["default_controll"]
+		resource = conf["default_controll"]
 		return
 	}
-	RESTful := false
-	if conf["RESTful"] == "on" {
-		RESTful = true
-	}
+
 	path := strings.Split(req.URL.Path, "/")
+
 	l := len(path)
 	if path[1] != "" {
-		if RESTful {
-			var action string
-			for i := 1; i < l; i++ {
-				if i%2 != 0 {
-					action += strings.Title(strings.ToLower(path[i]))
-				} else {
-					actParams = append(actParams, path[i])
+		if conf["RESTful"] == "on" {
+			if l > 3 {
+				err = errors.New("Uri error: expect /:resource/[:id]")
+			} else {
+				resource = strings.Title(strings.ToLower(path[1]))
+				action = strings.Title(strings.ToLower(req.Method)) + resource
+				if l > 2 && path[2] != "" {
+					id, err = strconv.ParseInt(path[2], 10, 64)
 				}
 			}
-			actName = req.Method + string(action)
 		} else {
 			for i := 1; i < l; i++ {
-				actName += strings.Title(strings.ToLower(path[i]))
+				action += strings.Title(strings.ToLower(path[i]))
 			}
 		}
-
 	}
 	return
 }

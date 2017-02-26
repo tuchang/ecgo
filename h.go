@@ -59,7 +59,7 @@ type EcgoApper interface {
 	sessionSave()
 	newSession(s SessionHandler)
 	newStats()
-	parseReq()
+	parseReq() (err error)
 	dispatch(w http.ResponseWriter, r *http.Request)
 }
 
@@ -94,15 +94,16 @@ type Request struct {
 	ResWriter *resWriter
 	Req       *http.Request
 
-	UpFile       map[string][]UpFile    //存放上传的文件信息
-	Get          map[string]string      //存放Get参数
-	Post         map[string]string      //存放Post/put参数
-	Cookie       map[string]string      //存放cookie
-	Header       map[string]string      //存放header
-	Session      map[string]interface{} //存放session
-	Method       string                 //请求的方法 GET/POST...
-	ActionName   string                 //path中的资源名称
-	ActionParams []string               //path中资源的id列表
+	UpFile   map[string][]UpFile    //存放上传的文件信息
+	Get      map[string]string      //存放Get参数
+	Post     map[string]string      //存放Post/put参数
+	Cookie   map[string]string      //存放cookie
+	Header   map[string]string      //存放header
+	Session  map[string]interface{} //存放session
+	Method   string                 //请求的方法 GET/POST...
+	Action   string                 //解释后的action名称
+	Resource string                 //path中的资源名称
+	Pk       int64                  //path中资源的id
 
 	mcDao    *Mc
 	mysqlDao *MySQL

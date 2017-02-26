@@ -2,7 +2,27 @@
 
 ecgo 是一个**易学、易用、易扩展**的web开发框架。核心功能包括：
 
-- 自动规则路由，支持RESTful
+- 自动规则路由
+
+- 自动的RESTful服务（配置RESTful =on）：使用/:Resource/:Id格式的URI，可根椐不同的请求方法对资源进行操作
+	+ 资源（Resource）对应数据库的表名
+	+ :Id为数据库的主键的键(必须命名为id,且自增id)
+	+ GET方法：指定Id时获取该行，不指定时返回全部（可使用参数 limit,order,field来限制），如 GET /User/1 表示获取id=1的用户
+	+ POST方法：创建一条新记录（在body中指定字段及值），如 POST /User
+	+ PUT方法： 更新一条记录（在body中指定字段及新的值）, 必须指定id,   如： PUT /User/1 表示修改id=1的用户信息
+	+ DELETE方法： 删除指定ID的记录，如: DELETE /User/1
+	
+	自动化的RESTful只支持单表单一操作，如果需要复制的操作（比如删除用户时同时删除用户存在其它表中的资料），可自由定制，方法是实现一个以方法名和资源名组成的控制器方法，如：
+
+
+	```
+	//替换删除User的自动处理
+	func(this *Controller) DeleteUser(){
+		//进行处理
+	}
+	```
+
+
 
 - request的二次封装
 	+ 可以直接使用格式化的Get,Post，Cookie，Session等变量来处理请求数据

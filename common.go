@@ -32,7 +32,7 @@ func init() {
 	//遍历获取所有配置文件
 	cPath := RootPath + "/conf/"
 	files, _ := ioutil.ReadDir(cPath)
-	for _, f := range files { //遍历模板目录,
+	for _, f := range files { //遍历配置文件目录,
 		if f.IsDir() {
 			continue
 		}

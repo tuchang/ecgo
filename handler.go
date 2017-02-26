@@ -12,31 +12,37 @@ import (
 
 //默认处理器
 func (this *Request) defaultHandler(c EcgoApper) {
-	this.Log.Write(LL_SYS, "[%s]defaultHandler start, reflect controller,Action=%s", this.appId, this.ActionName)
+	this.Log.Write(LL_SYS, "[%s]defaultHandler start,action=%s,method=%s,id=%d", this.appId, this.Action, this.Method, this.Pk)
 	rValue := reflect.ValueOf(c)
 	rType := reflect.TypeOf(c)
 	reciver := rValue.Elem().FieldByName("Request")
 	reciver.Set(reflect.ValueOf(this))
-	method, exist := rType.MethodByName(this.ActionName)
-	if !exist {
-		this.Log.Write(LL_SYS, "[%s]controller(action=%s) not found", this.appId, this.ActionName)
-		this.ShowErr(404, fmt.Sprintf("Action Not Found(%s)!", this.ActionName))
-		return
+
+	method, resExist := rType.MethodByName(this.Action)
+	if !resExist && this.Conf["RESTful"] != "on" { //方法不存在且没有开启RESTful
+		this.Log.Write(LL_SYS, "[%s]controller(action=%s) not found", this.appId, this.Action)
+		this.ShowErr(404, fmt.Sprintf("Action Not Found(%s)!", this.Action))
+	} else {
+		args := []reflect.Value{rValue}
+		//前置控制器
+		onBefore, exist := rType.MethodByName(this.Conf["prefix_control"])
+		if exist {
+			this.Log.Write(LL_SYS, "[%s]prefix_control start: %s", this.appId, this.Conf["prefix_control"])
+			this.Bm.Set("pre_control_start")
+			onBefore.Func.Call(args)
+			this.Bm.Set("pre_control_end")
+			this.Log.Write(LL_SYS, "[%s]prefix_control finish", this.appId)
+		}
+		this.Log.Write(LL_SYS, "[%s]control %s start", this.appId, this.Action)
+		this.Bm.Set("control_start")
+		if resExist {
+			method.Func.Call(args)
+		} else {
+			this.restControl()
+		}
+		this.Bm.Set("control_end")
 	}
-	args := []reflect.Value{rValue}
-	onBefore, exist := rType.MethodByName(this.Conf["prefix_control"])
-	if exist {
-		this.Log.Write(LL_SYS, "[%s]prefix_control start: %s", this.appId, this.Conf["prefix_control"])
-		this.Bm.Set("pre_control_start")
-		onBefore.Func.Call(args)
-		this.Bm.Set("pre_control_end")
-		this.Log.Write(LL_SYS, "[%s]prefix_control finish", this.appId)
-	}
-	this.Log.Write(LL_SYS, "[%s]control %s start", this.appId, this.ActionName)
-	this.Bm.Set("control_start")
-	method.Func.Call(args)
-	this.Bm.Set("control_end")
-	this.Log.Write(LL_SYS, "[%s]control %s finish", this.appId, this.ActionName)
+	this.Log.Write(LL_SYS, "[%s]control %s finish", this.appId, this.Action)
 }
 
 //静态文件服务
